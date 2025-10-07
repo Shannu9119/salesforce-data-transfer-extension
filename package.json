@@ -4,6 +4,7 @@
   "description": "Transfer data and relationships between Salesforce orgs with support for insert/upsert modes, relationship handling, and external ID mapping",
   "version": "1.0.0",
   "publisher": "salesforce-tools",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.104.0"
   },

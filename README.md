@@ -1,6 +1,17 @@
 # Salesforce Data Transfer
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![VS Code Extension](https://img.shields.io/badge/VS%20Code-Extension-blue.svg)](https://marketplace.visualstudio.com/VSCode)
+
 A powerful Visual Studio Code extension for transferring data and maintaining relationships between Salesforce orgs. This extension helps developers and administrators easily migrate data while preserving object relationships and dependencies.
+
+## 🚀 Open Source
+
+This project is open source and welcomes contributions from the community! Feel free to:
+- Report bugs and request features via [GitHub Issues](https://github.com/Shannu9119/salesforce-data-transfer-extension/issues)
+- Submit pull requests to improve the extension
+- Star the repository if you find it useful
+- Share it with other Salesforce developers
 
 ## Features
 
@@ -120,15 +131,41 @@ npm run watch
 
 ---
 
-## Following extension guidelines
+## 🤝 Contributing
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+We welcome contributions from the community! Here's how you can help:
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+### Reporting Issues
+- Use the [GitHub Issues](https://github.com/Shannu9119/salesforce-data-transfer-extension/issues) page
+- Provide detailed information about bugs or feature requests
+- Include steps to reproduce issues
 
-## Working with Markdown
+### Development Setup
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Shannu9119/salesforce-data-transfer-extension.git
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Open in VS Code and press `F5` to run the extension in Development Host
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+### Pull Requests
+- Fork the repository
+- Create a feature branch: `git checkout -b feature-name`
+- Make your changes and test thoroughly
+- Submit a pull request with a clear description
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with VS Code Extension API
+- Integrates with Salesforce CLI
+- Inspired by the need for better data migration tools in the Salesforce ecosystem
 
 * Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
 * Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
