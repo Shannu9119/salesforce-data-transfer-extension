@@ -1,0 +1,113 @@
+{
+  "name": "salesforce-data-transfer",
+  "displayName": "Salesforce Data Transfer",
+  "description": "Transfer data and relationships between Salesforce orgs with support for insert/upsert modes, relationship handling, and external ID mapping",
+  "version": "1.0.0",
+  "publisher": "salesforce-tools",
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "keywords": [
+    "salesforce",
+    "data",
+    "transfer",
+    "migration",
+    "sfdx"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/salesforce-tools/salesforce-data-transfer"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "sf-data-transfer.openTransferPanel",
+        "title": "Open Data Transfer Panel",
+        "category": "Salesforce Data Transfer"
+      },
+      {
+        "command": "sf-data-transfer.refreshOrgs",
+        "title": "Refresh Salesforce Orgs",
+        "category": "Salesforce Data Transfer",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "sf-data-transfer.selectSourceOrg",
+        "title": "Select Source Org",
+        "category": "Salesforce Data Transfer"
+      },
+      {
+        "command": "sf-data-transfer.selectTargetOrg",
+        "title": "Select Target Org",
+        "category": "Salesforce Data Transfer"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "sf-data-transfer-orgs",
+          "name": "Salesforce Orgs",
+          "when": "sf-data-transfer:hasOrgs"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sf-data-transfer",
+          "title": "Salesforce Data Transfer",
+          "icon": "$(database)"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "sf-data-transfer.refreshOrgs",
+          "when": "view == sf-data-transfer-orgs",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "sf-data-transfer.openTransferPanel"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "dependencies": {
+    "@salesforce/core": "^8.6.0",
+    "@salesforce/sf-plugins-core": "^12.2.0",
+    "jsforce": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.104.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@typescript-eslint/eslint-plugin": "^8.45.0",
+    "@typescript-eslint/parser": "^8.45.0",
+    "eslint": "^9.36.0",
+    "typescript": "^5.9.3",
+    "ts-loader": "^9.5.4",
+    "webpack": "^5.102.0",
+    "webpack-cli": "^6.0.1",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2"
+  }
+}
