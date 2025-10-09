@@ -2,7 +2,7 @@
   "name": "salesforce-data-transfer",
   "displayName": "Salesforce Data Transfer",
   "description": "Transfer data and relationships between Salesforce orgs with support for insert/upsert modes, relationship handling, and external ID mapping",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "salesforce-tools",
   "license": "MIT",
   "engines": {
