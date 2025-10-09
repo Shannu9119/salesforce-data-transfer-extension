@@ -35,7 +35,7 @@ export class DataTransferPanel {
                         await this._validateQuery(message.query);
                         break;
                     case 'previewQuery':
-                        await this._previewQuery(message.query);
+                        await this._previewQuery(message.query, message.sourceOrgUsername);
                         break;
                     case 'startTransfer':
                         await this._startTransfer(message.options);
@@ -1244,10 +1244,17 @@ export class DataTransferPanel {
                 return;
             }
 
+            const sourceOrg = document.getElementById('sourceOrg').value;
+            if (!sourceOrg) {
+                addToLog('Please select a source org first', 'error');
+                return;
+            }
+
             // Send preview request to extension
             vscode.postMessage({
                 type: 'previewQuery',
-                query: query
+                query: query,
+                sourceOrgUsername: sourceOrg
             });
         }
 
@@ -1585,7 +1592,7 @@ export class DataTransferPanel {
         return countQuery;
     }
 
-    private async _previewQuery(query: string) {
+    private async _previewQuery(query: string, sourceOrgUsername?: string) {
         vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: "Previewing SOQL query...",
@@ -1595,12 +1602,19 @@ export class DataTransferPanel {
                 progress.report({ increment: 20, message: "Validating query..." });
 
                 const orgs = this.orgManager.getOrgs();
-                // For now, we'll use the first org or need to track current source org
-                // This is a simplified approach - in a real implementation, we'd track the selected source org
-                const sourceOrg = orgs[0];
-
-                if (!sourceOrg) {
-                    throw new Error('No source org available');
+                
+                // Find the selected source org, or fall back to first org
+                let sourceOrg;
+                if (sourceOrgUsername) {
+                    sourceOrg = orgs.find(org => org.username === sourceOrgUsername);
+                    if (!sourceOrg) {
+                        throw new Error(`Source org not found: ${sourceOrgUsername}`);
+                    }
+                } else {
+                    sourceOrg = orgs[0];
+                    if (!sourceOrg) {
+                        throw new Error('No source org available');
+                    }
                 }
 
                 progress.report({ increment: 40, message: "Getting access token..." });
