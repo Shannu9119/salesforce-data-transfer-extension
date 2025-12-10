@@ -32,7 +32,7 @@ export class DataTransferPanel {
                         await this._sendObjectTypes(message.sourceOrgUsername);
                         break;
                     case 'validateQuery':
-                        await this._validateQuery(message.query);
+                        await this._validateQuery(message.query, message.sourceOrgUsername);
                         break;
                     case 'previewQuery':
                         await this._previewQuery(message.query, message.sourceOrgUsername);
@@ -462,20 +462,41 @@ export class DataTransferPanel {
             gap: 12px;
         }
         .validation-result {
-            padding: 8px 12px;
-            border-radius: 4px;
+            padding: 10px 16px;
+            border-radius: 6px;
             font-size: 13px;
             margin-left: 20px;
+            display: inline-block;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            min-width: 200px;
+        }
+        .validation-result:empty {
+            display: none;
         }
         .validation-success {
-            background-color: rgba(76, 175, 80, 0.1);
-            border: 1px solid rgba(76, 175, 80, 0.3);
+            background-color: rgba(76, 175, 80, 0.15);
+            border: 1px solid rgba(76, 175, 80, 0.4);
             color: #4CAF50;
+            animation: slideIn 0.3s ease;
         }
         .validation-error {
-            background-color: rgba(244, 67, 54, 0.1);
-            border: 1px solid rgba(244, 67, 54, 0.3);
+            background-color: rgba(244, 67, 54, 0.15);
+            border: 1px solid rgba(244, 67, 54, 0.4);
             color: #f44336;
+            animation: slideIn 0.3s ease;
+            max-width: 600px;
+            word-wrap: break-word;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         .query-preview {
             margin-top: 20px;
@@ -889,11 +910,21 @@ export class DataTransferPanel {
                 case 'queryValidation':
                     const validationDiv = document.getElementById('queryValidation');
                     if (message.isValid) {
+                        validationDiv.style.display = 'inline-block';
                         validationDiv.className = 'validation-result validation-success';
                         validationDiv.textContent = '✓ Query is valid';
+                        validationDiv.style.backgroundColor = '';
+                        validationDiv.style.borderColor = '';
+                        validationDiv.style.color = '';
+                        autoDismissValidation(5000); // Dismiss after 5 seconds
                     } else {
+                        validationDiv.style.display = 'inline-block';
                         validationDiv.className = 'validation-result validation-error';
-                        validationDiv.textContent = message.error || 'Invalid query';
+                        validationDiv.textContent = '✗ ' + (message.error || 'Invalid query');
+                        validationDiv.style.backgroundColor = '';
+                        validationDiv.style.borderColor = '';
+                        validationDiv.style.color = '';
+                        autoDismissValidation(10000); // Dismiss after 10 seconds for errors
                     }
                     break;
                 case 'queryPreview':
@@ -925,7 +956,7 @@ export class DataTransferPanel {
             const previewData = document.getElementById('previewData');
             
             if (data && data.records && data.records.length > 0) {
-                const records = data.records.slice(0, 10); // Show first 10 records
+                const records = data.records; // Show all records returned by the query
                 const fields = Object.keys(records[0]).filter(key => key !== 'attributes');
                 
                 let tableHtml = '<table class="preview-table"><thead><tr>';
@@ -944,14 +975,15 @@ export class DataTransferPanel {
                 });
                 
                 tableHtml += '</tbody></table>';
-                const totalCount = data.actualTotalSize || data.totalSize || data.records.length;
-                const previewCount = data.records.length;
-                tableHtml += \`<p><strong>Preview:</strong> Showing \${previewCount} of \${totalCount} total records</p>\`;
+                const actualRecordCount = data.records.length;
+                const totalAvailable = data.totalSize || actualRecordCount;
+                const done = data.done ? 'All records retrieved' : 'More records available';
+                tableHtml += \`<p><strong>Results:</strong> Retrieved \${actualRecordCount} records. Total available in org: \${totalAvailable}. \${done}</p>\`;
                 
                 previewData.innerHTML = tableHtml;
                 previewDiv.style.display = 'block';
                 
-                addToLog(\`Preview loaded: Showing \${previewCount} of \${totalCount} total records\`, 'success');
+                addToLog(\`Query executed successfully: Retrieved \${actualRecordCount} records (Total available: \${totalAvailable})\`, 'success');
             } else {
                 previewData.innerHTML = '<p>No records found for this query.</p>';
                 previewDiv.style.display = 'block';
@@ -1206,34 +1238,59 @@ export class DataTransferPanel {
             window.recordLimits[objectName] = parseInt(value) || 0;
         }
 
+        let validationTimeout = null;
+        
+        function autoDismissValidation(delay = 5000) {
+            // Clear any existing timeout
+            if (validationTimeout) {
+                clearTimeout(validationTimeout);
+            }
+            
+            // Set new timeout to clear the validation message
+            validationTimeout = setTimeout(() => {
+                const validationDiv = document.getElementById('queryValidation');
+                if (validationDiv) {
+                    validationDiv.className = 'validation-result';
+                    validationDiv.textContent = '';
+                    validationDiv.style.display = 'none';
+                }
+            }, delay);
+        }
+        
         function validateQuery() {
             const query = document.getElementById('soqlQuery').value.trim();
             const validationDiv = document.getElementById('queryValidation');
+            const sourceOrg = document.getElementById('sourceOrg').value;
             
             if (!query) {
+                validationDiv.style.display = 'inline-block';
                 validationDiv.className = 'validation-result validation-error';
                 validationDiv.textContent = 'Please enter a SOQL query';
+                autoDismissValidation();
                 return;
             }
 
-            // Basic SOQL validation
-            const queryUpper = query.toUpperCase();
-            if (!queryUpper.startsWith('SELECT')) {
+            if (!sourceOrg) {
+                validationDiv.style.display = 'inline-block';
                 validationDiv.className = 'validation-result validation-error';
-                validationDiv.textContent = 'Query must start with SELECT';
+                validationDiv.textContent = 'Please select a source org first';
+                autoDismissValidation();
                 return;
             }
 
-            if (!queryUpper.includes(' FROM ')) {
-                validationDiv.className = 'validation-result validation-error';
-                validationDiv.textContent = 'Query must include FROM clause';
-                return;
-            }
+            // Show validating message
+            validationDiv.style.display = 'inline-block';
+            validationDiv.className = 'validation-result';
+            validationDiv.style.backgroundColor = 'rgba(100, 150, 200, 0.1)';
+            validationDiv.style.borderColor = 'rgba(100, 150, 200, 0.3)';
+            validationDiv.style.color = 'var(--vscode-foreground)';
+            validationDiv.textContent = '⏳ Validating query against Salesforce...';
 
             // Send validation request to extension
             vscode.postMessage({
                 type: 'validateQuery',
-                query: query
+                query: query,
+                sourceOrgUsername: sourceOrg
             });
         }
 
@@ -1530,38 +1587,146 @@ export class DataTransferPanel {
 </html>`;
     }
 
-    private async _validateQuery(query: string) {
+    private async _validateQuery(query: string, sourceOrgUsername: string) {
         try {
-            // Basic SOQL validation
+            // Basic SOQL validation first
             const queryUpper = query.toUpperCase();
-            let isValid = true;
             let error = '';
 
             if (!query.trim()) {
-                isValid = false;
-                error = 'Query cannot be empty';
-            } else if (!queryUpper.startsWith('SELECT')) {
-                isValid = false;
-                error = 'Query must start with SELECT';
-            } else if (!queryUpper.includes(' FROM ')) {
-                isValid = false;
-                error = 'Query must include FROM clause';
-            } else if (queryUpper.includes('DELETE') || queryUpper.includes('UPDATE') || queryUpper.includes('INSERT')) {
-                isValid = false;
-                error = 'Only SELECT queries are allowed for data transfer';
+                this._panel.webview.postMessage({
+                    type: 'queryValidation',
+                    isValid: false,
+                    error: 'Query cannot be empty'
+                });
+                return;
+            }
+            
+            if (!queryUpper.startsWith('SELECT')) {
+                this._panel.webview.postMessage({
+                    type: 'queryValidation',
+                    isValid: false,
+                    error: 'Query must start with SELECT keyword'
+                });
+                return;
+            }
+            
+            if (!queryUpper.includes(' FROM ')) {
+                this._panel.webview.postMessage({
+                    type: 'queryValidation',
+                    isValid: false,
+                    error: 'Query must include FROM clause to specify an object'
+                });
+                return;
+            }
+            
+            if (queryUpper.includes('DELETE') || queryUpper.includes('UPDATE') || queryUpper.includes('INSERT')) {
+                this._panel.webview.postMessage({
+                    type: 'queryValidation',
+                    isValid: false,
+                    error: 'Only SELECT queries are allowed for data transfer'
+                });
+                return;
+            }
+
+            // Validate against Salesforce by executing a limited query
+            const orgs = this.orgManager.getOrgs();
+            const sourceOrg = orgs.find(org => org.username === sourceOrgUsername);
+            
+            if (!sourceOrg) {
+                this._panel.webview.postMessage({
+                    type: 'queryValidation',
+                    isValid: false,
+                    error: 'Please select a source org first'
+                });
+                return;
+            }
+
+            // Get access token
+            const accessToken = await this.orgManager.getAccessToken(sourceOrg.username);
+            if (!accessToken) {
+                this._panel.webview.postMessage({
+                    type: 'queryValidation',
+                    isValid: false,
+                    error: 'Could not retrieve access token. Please re-authenticate the org.'
+                });
+                return;
+            }
+
+            sourceOrg.accessToken = accessToken;
+
+            // Initialize connection
+            const tempTargetOrg = { ...sourceOrg };
+            await this.dataTransferService.initializeConnections(sourceOrg, tempTargetOrg);
+
+            // Execute the query with LIMIT 1 to validate syntax and permissions
+            let validationQuery = query.trim();
+            
+            // Remove existing LIMIT clause and add LIMIT 1 for validation
+            // Use case-insensitive regex to remove any LIMIT clause at the end
+            validationQuery = validationQuery.replace(/\s+LIMIT\s+\d+\s*$/i, '');
+            validationQuery += ' LIMIT 1';
+
+            // Try to execute the query
+            await this.dataTransferService.executeQuery(validationQuery);
+
+            // If we get here, the query is valid
+            this._panel.webview.postMessage({
+                type: 'queryValidation',
+                isValid: true,
+                error: ''
+            });
+
+        } catch (error: any) {
+            // Parse Salesforce error message to provide helpful feedback
+            let errorMessage = 'Query validation failed';
+            
+            if (error && typeof error === 'object') {
+                const errorStr = error.message || JSON.stringify(error);
+                
+                // Extract meaningful error messages from Salesforce responses
+                if (errorStr.includes('INVALID_FIELD')) {
+                    const fieldMatch = errorStr.match(/No such column '([^']+)'/);
+                    if (fieldMatch) {
+                        errorMessage = `Invalid field: '${fieldMatch[1]}' does not exist on the object or you don't have access to it`;
+                    } else {
+                        errorMessage = 'One or more fields in the query are invalid or inaccessible';
+                    }
+                } else if (errorStr.includes('INVALID_TYPE')) {
+                    errorMessage = 'The object specified in FROM clause does not exist or is not accessible';
+                } else if (errorStr.includes('MALFORMED_QUERY')) {
+                    errorMessage = 'Query syntax is malformed. Please check your SOQL syntax';
+                } else if (errorStr.includes('No such column')) {
+                    const fieldMatch = errorStr.match(/No such column '([^']+)'/);
+                    if (fieldMatch) {
+                        errorMessage = `Field '${fieldMatch[1]}' does not exist or is not accessible`;
+                    }
+                } else if (errorStr.includes('unexpected token')) {
+                    const tokenMatch = errorStr.match(/unexpected token: '([^']+)'/);
+                    if (tokenMatch) {
+                        errorMessage = `Syntax error: unexpected token '${tokenMatch[1]}'`;
+                    } else {
+                        errorMessage = 'Syntax error in query. Please check your SOQL syntax';
+                    }
+                } else if (errorStr.includes('401')) {
+                    errorMessage = 'Authentication failed. Please re-authenticate your org';
+                } else if (errorStr.includes('403')) {
+                    errorMessage = 'Access denied. You may not have permission to query this object';
+                } else {
+                    // Try to extract any meaningful error message
+                    const messageMatch = errorStr.match(/message["']?:\s*["']([^"']+)["']/);
+                    if (messageMatch) {
+                        errorMessage = messageMatch[1];
+                    } else if (errorStr.length < 200) {
+                        errorMessage = errorStr;
+                    }
+                }
             }
 
             this._panel.webview.postMessage({
                 type: 'queryValidation',
-                isValid,
-                error
-            });
-
-        } catch (error) {
-            this._panel.webview.postMessage({
-                type: 'queryValidation',
                 isValid: false,
-                error: `Validation failed: ${error}`
+                error: errorMessage
             });
         }
     }
@@ -1601,7 +1766,11 @@ export class DataTransferPanel {
             try {
                 progress.report({ increment: 20, message: "Validating query..." });
 
-                const orgs = this.orgManager.getOrgs();
+                // Refresh orgs to ensure we have the latest data
+                const orgs = await this.orgManager.refreshOrgs();
+                
+                console.log('Preview query - Available orgs:', orgs.length);
+                console.log('Preview query - Source org username:', sourceOrgUsername);
                 
                 // Find the selected source org, or fall back to first org
                 let sourceOrg;
@@ -1616,12 +1785,20 @@ export class DataTransferPanel {
                         throw new Error('No source org available');
                     }
                 }
+                
+                console.log('Preview query - Using source org:', sourceOrg.username);
 
                 progress.report({ increment: 40, message: "Getting access token..." });
 
                 const accessToken = await this.orgManager.getAccessToken(sourceOrg.username);
                 if (!accessToken) {
-                    throw new Error('Could not get access token');
+                    throw new Error(`Could not retrieve access token for ${sourceOrg.alias || sourceOrg.username}. Please re-authenticate the org using: sf org login web --alias ${sourceOrg.alias || sourceOrg.username}`);
+                }
+
+                // Validate the token
+                const isTokenValid = await this.orgManager.validateAccessToken(sourceOrg.instanceUrl, accessToken);
+                if (!isTokenValid) {
+                    throw new Error(`Access token for ${sourceOrg.alias || sourceOrg.username} is invalid or expired. Please re-authenticate using: sf org login web --alias ${sourceOrg.alias || sourceOrg.username}`);
                 }
 
                 sourceOrg.accessToken = accessToken;
@@ -1632,24 +1809,8 @@ export class DataTransferPanel {
                 const tempTargetOrg = { ...sourceOrg };
                 await this.dataTransferService.initializeConnections(sourceOrg, tempTargetOrg);
 
-                // First get the total count without limit
-                let totalCount = 0;
-                try {
-                    const countQuery = this.buildCountQuery(query);
-                    const countResult = await this.dataTransferService.executeQuery(countQuery);
-                    totalCount = countResult.totalSize || countResult.records?.[0]?.['expr0'] || 0;
-                } catch (error) {
-                    console.log('Could not get count, will use limited result count');
-                }
-
-                // Execute the query with a limit for preview
-                const previewQuery = query.includes('LIMIT') ? query : `${query} LIMIT 100`;
-                const result = await this.dataTransferService.executeQuery(previewQuery);
-
-                // Add the total count to the result
-                if (totalCount > 0) {
-                    result.actualTotalSize = totalCount;
-                }
+                // Execute the user's query as-is (respecting their LIMIT clause)
+                const result = await this.dataTransferService.executeQuery(query.trim());
 
                 progress.report({ increment: 100 });
 
@@ -1658,8 +1819,9 @@ export class DataTransferPanel {
                     data: result
                 });
 
-                const displayCount = result.actualTotalSize || result.totalSize || result.records?.length || 0;
-                vscode.window.showInformationMessage(`Query preview completed: ${displayCount} total records found`);
+                const recordCount = result.records?.length || 0;
+                const totalSize = result.totalSize || recordCount;
+                vscode.window.showInformationMessage(`Query preview completed: Retrieved ${recordCount} records (Total available: ${totalSize})`);
 
             } catch (error) {
                 console.error('Query preview error:', error);
